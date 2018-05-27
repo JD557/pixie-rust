@@ -9,12 +9,14 @@ use std::hash::Hash;
 use std::iter::FromIterator;
 
 pub struct Graph<T> {
-    data: HashMap<T, HashSet<T>>
+    data: HashMap<T, HashSet<T>>,
 }
 
-impl<T : Eq + Clone + Hash> Graph<T> {
+impl<T: Eq + Clone + Hash> Graph<T> {
     pub fn new() -> Graph<T> {
-        Graph { data: HashMap::new() }
+        Graph {
+            data: HashMap::new(),
+        }
     }
 
     pub fn add_node(&mut self, node: &T) {
@@ -22,12 +24,26 @@ impl<T : Eq + Clone + Hash> Graph<T> {
     }
 
     pub fn add_edge(&mut self, node_a: &T, node_b: &T) {
-        self.data.entry(node_a.clone())
-            .and_modify(|e| {e.insert(node_b.clone());})
-            .or_insert({let mut h = HashSet::new(); h.insert(node_b.clone()); h});
-        self.data.entry(node_b.clone())
-            .and_modify(|e| {e.insert(node_a.clone());})
-            .or_insert({let mut h = HashSet::new(); h.insert(node_a.clone()); h});
+        self.data
+            .entry(node_a.clone())
+            .and_modify(|e| {
+                e.insert(node_b.clone());
+            })
+            .or_insert({
+                let mut h = HashSet::new();
+                h.insert(node_b.clone());
+                h
+            });
+        self.data
+            .entry(node_b.clone())
+            .and_modify(|e| {
+                e.insert(node_a.clone());
+            })
+            .or_insert({
+                let mut h = HashSet::new();
+                h.insert(node_a.clone());
+                h
+            });
     }
 
     pub fn successors(&self, node: &T) -> HashSet<T> {
@@ -43,13 +59,21 @@ impl<T : Eq + Clone + Hash> Graph<T> {
         while choice.is_some() {
             let value = choice.clone().unwrap();
             goal = goal - weight_fun(&value);
-            if goal <= 0.0 {break;}
-            else {choice = iterator.next();}
+            if goal <= 0.0 {
+                break;
+            } else {
+                choice = iterator.next();
+            }
         }
         choice
     }
 
-    pub fn random_walk(&self, starting_node: &T, max_hops: u8, weight_fun: &Fn(&T,&T) -> f32) -> LinkedList<T> {
+    pub fn random_walk(
+        &self,
+        starting_node: &T,
+        max_hops: u8,
+        weight_fun: &Fn(&T, &T) -> f32,
+    ) -> LinkedList<T> {
         let mut visited: LinkedList<T> = LinkedList::new();
         let mut current_node = starting_node.clone();
         let mut hops = max_hops;
@@ -57,17 +81,20 @@ impl<T : Eq + Clone + Hash> Graph<T> {
             hops = hops - 1;
             visited.push_front(current_node.clone());
             let succs = self.successors(&current_node);
-            let next = Graph::weighted_sample(LinkedList::from_iter(succs.iter().cloned()), &(|next_node| weight_fun(&current_node,next_node)));
+            let next = Graph::weighted_sample(
+                LinkedList::from_iter(succs.iter().cloned()),
+                &(|next_node| weight_fun(&current_node, next_node)),
+            );
             match next {
                 None => break,
-                Some(v) => current_node = v.clone()
+                Some(v) => current_node = v.clone(),
             };
         }
         visited
     }
 }
 
-impl<T : fmt::Debug + Eq + Hash> fmt::Debug for Graph<T> {
+impl<T: fmt::Debug + Eq + Hash> fmt::Debug for Graph<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Graph {:?}", self.data)
     }

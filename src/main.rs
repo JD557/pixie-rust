@@ -1,8 +1,8 @@
 extern crate rand;
 
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
-use std::collections::HashMap;
 
 mod recommender;
 use recommender::Recommender;
@@ -24,8 +24,7 @@ fn main() {
         let entry = entry_res.unwrap();
         let name = entry.get(1).unwrap();
         let categories_str = entry.get(2).unwrap();
-        let rating = entry.get(5).unwrap()
-            .parse::<f32>().unwrap_or(0.0);
+        let rating = entry.get(5).unwrap().parse::<f32>().unwrap_or(0.0);
         ratings.insert(String::from(name), rating);
         recommender.add_object(&String::from(name));
         let categories = categories_str.split(",");
@@ -37,24 +36,24 @@ fn main() {
     }
     println!("Data Loaded!");
 
-    let top_recommendations = recommender.recommendations(
-        &RecommenderNode::Object(String::from("Cowboy Bebop")),
-        25,
-        25,
-        &(|_, to|
-          match to {
-            RecommenderNode::Tag(_) => 1.0,
-            RecommenderNode::Object(name) =>
-                ratings.get(name).unwrap_or(&0.0).clone()
-          })
-        ).iter()
-        .filter(|node|
-            match node {
-                RecommenderNode::Tag(_) => false,
-                RecommenderNode::Object(_) => true
-            }
+    let top_recommendations = recommender
+        .recommendations(
+            &RecommenderNode::Object(String::from("Cowboy Bebop")),
+            25,
+            25,
+            &(|_, to| match to {
+                RecommenderNode::Tag(_) => 1.0,
+                RecommenderNode::Object(name) => ratings.get(name).unwrap_or(&0.0).clone(),
+            }),
         )
-        .take(10).cloned().collect::<Vec<RecommenderNode<String>>>();
+        .iter()
+        .filter(|node| match node {
+            RecommenderNode::Tag(_) => false,
+            RecommenderNode::Object(_) => true,
+        })
+        .take(10)
+        .cloned()
+        .collect::<Vec<RecommenderNode<String>>>();
 
     println!("Recommendations: {:?}", top_recommendations);
 }
