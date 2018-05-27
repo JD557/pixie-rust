@@ -34,14 +34,29 @@ impl Recommender {
         );
     }
 
-    pub fn simple_recommendations(&self, from: &RecommenderNode, iterations: u8) -> HashMap<RecommenderNode, u32> {
-        let walk = self.graph.random_walk_simple(from, iterations);
+    fn simple_recommendations_map(&self, from: &RecommenderNode, iterations: u8, depth: u8) -> HashMap<RecommenderNode, u32> {
         let mut acc: HashMap<RecommenderNode, u32> = HashMap::new();
-        for visited in walk {
-            let count = acc.entry(visited).or_insert(0);
-            *count += 1;
+        for _ in 0..iterations {
+            let walk = self.graph.random_walk_simple(from, depth);
+            for visited in walk {
+                let count = acc.entry(visited).or_insert(0);
+                *count += 1;
+            }
         }
         acc
+    }
+
+    pub fn simple_recommendations(&self, from: &RecommenderNode, iterations: u8, depth: u8) -> Vec<RecommenderNode> {
+        let all_recommendations = self.simple_recommendations_map(
+            from, iterations, depth);
+        let mut top_recommendations = all_recommendations.iter()
+            .collect::<Vec<(&RecommenderNode, &u32)>>();
+        top_recommendations.sort_by_key(|(_, &v)| v);
+        top_recommendations.reverse();
+        top_recommendations.iter()
+            .cloned()
+            .map(|(k, _)| k.clone())
+            .collect()
     }
 }
 

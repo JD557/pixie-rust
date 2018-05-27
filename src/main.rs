@@ -29,10 +29,17 @@ fn main() {
         }
     }
 
-    let recommendations = recommender.simple_recommendations(
-        &RecommenderNode::Object(String::from("Cowboy Bebop")),
-        20);
+    let top_recommendations = recommender.simple_recommendations(
+        &RecommenderNode::Object(String::from("Cowboy Bebop")), 25, 25)
+        .iter()
+        .filter(|node|
+            match node {
+                RecommenderNode::Tag(_) => false,
+                RecommenderNode::Object(_) => true
+            }
+        )
+        .take(10).cloned().collect::<Vec<RecommenderNode>>();
 
     //println!("Recommender: {:?}", recommender);
-    println!("Recommendations: {:?}", recommendations);
+    println!("Recommendations: {:?}", top_recommendations);
 }
