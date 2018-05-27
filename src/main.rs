@@ -12,6 +12,8 @@ extern crate csv;
 fn main() {
     let mut recommender: Recommender<String> = Recommender::new();
 
+
+    println!("Loading Data...");
     let file = File::open("anime.csv").unwrap();
     let buf_reader = BufReader::new(file);
     let mut csv_reader = csv::Reader::from_reader(buf_reader);
@@ -28,6 +30,7 @@ fn main() {
             recommender.tag_object(&String::from(name), trimmed);
         }
     }
+    println!("Data Loaded!");
 
     let top_recommendations = recommender.simple_recommendations(
         &RecommenderNode::Object(String::from("Cowboy Bebop")), 25, 25)
@@ -40,6 +43,5 @@ fn main() {
         )
         .take(10).cloned().collect::<Vec<RecommenderNode<String>>>();
 
-    //println!("Recommender: {:?}", recommender);
     println!("Recommendations: {:?}", top_recommendations);
 }

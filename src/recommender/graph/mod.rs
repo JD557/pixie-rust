@@ -49,7 +49,7 @@ impl<T : Eq + Clone + Hash> Graph<T> {
         choice
     }
 
-    pub fn random_walk(&self, starting_node: &T, max_hops: u8, weight_fun: &Fn(&T) -> f32) -> LinkedList<T> {
+    pub fn random_walk(&self, starting_node: &T, max_hops: u8, weight_fun: &Fn(&T,&T) -> f32) -> LinkedList<T> {
         let mut visited: LinkedList<T> = LinkedList::new();
         let mut current_node = starting_node.clone();
         let mut hops = max_hops;
@@ -57,7 +57,7 @@ impl<T : Eq + Clone + Hash> Graph<T> {
             hops = hops - 1;
             visited.push_front(current_node.clone());
             let succs = self.successors(&current_node);
-            let next = Graph::weighted_sample(LinkedList::from_iter(succs.iter().cloned()), weight_fun);
+            let next = Graph::weighted_sample(LinkedList::from_iter(succs.iter().cloned()), &(|next_node| weight_fun(&current_node,next_node)));
             match next {
                 None => break,
                 Some(v) => current_node = v.clone()
@@ -67,7 +67,7 @@ impl<T : Eq + Clone + Hash> Graph<T> {
     }
 
     pub fn random_walk_simple(&self, starting_node: &T, max_hops: u8) -> LinkedList<T> {
-        self.random_walk(starting_node, max_hops, &(|_| 1.0))
+        self.random_walk(starting_node, max_hops, &(|_,_| 1.0))
     }
 }
 
