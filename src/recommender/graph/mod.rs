@@ -65,10 +65,6 @@ impl<T : Eq + Clone + Hash> Graph<T> {
         }
         visited
     }
-
-    pub fn random_walk_simple(&self, starting_node: &T, max_hops: u8) -> LinkedList<T> {
-        self.random_walk(starting_node, max_hops, &(|_,_| 1.0))
-    }
 }
 
 impl<T : fmt::Debug + Eq + Hash> fmt::Debug for Graph<T> {

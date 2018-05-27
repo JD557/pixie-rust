@@ -35,10 +35,14 @@ impl<T : Eq + Clone + Hash> Recommender<T> {
         );
     }
 
-    fn simple_recommendations_map(&self, from: &RecommenderNode<T>, iterations: u8, depth: u8) -> HashMap<RecommenderNode<T>, u32> {
+    fn recommendations_map(&self,
+                           from: &RecommenderNode<T>,
+                           iterations: u8,
+                           depth: u8,
+                           weight_fun: &Fn(&RecommenderNode<T>,&RecommenderNode<T>) -> f32) -> HashMap<RecommenderNode<T>, u32> {
         let mut acc: HashMap<RecommenderNode<T>, u32> = HashMap::new();
         for _ in 0..iterations {
-            let walk = self.graph.random_walk_simple(from, depth);
+            let walk = self.graph.random_walk(from, depth, weight_fun);
             for visited in walk {
                 let count = acc.entry(visited).or_insert(0);
                 *count += 1;
@@ -47,9 +51,13 @@ impl<T : Eq + Clone + Hash> Recommender<T> {
         acc
     }
 
-    pub fn simple_recommendations(&self, from: &RecommenderNode<T>, iterations: u8, depth: u8) -> Vec<RecommenderNode<T>> {
-        let all_recommendations = self.simple_recommendations_map(
-            from, iterations, depth);
+    pub fn recommendations(&self,
+                                  from: &RecommenderNode<T>,
+                                  iterations: u8,
+                                  depth: u8,
+                                  weight_fun: &Fn(&RecommenderNode<T>,&RecommenderNode<T>) -> f32) -> Vec<RecommenderNode<T>> {
+        let all_recommendations = self.recommendations_map(
+            from, iterations, depth, weight_fun);
         let mut top_recommendations = all_recommendations.iter()
             .collect::<Vec<(&RecommenderNode<T>, &u32)>>();
         top_recommendations.sort_by_key(|(_, &v)| v);
