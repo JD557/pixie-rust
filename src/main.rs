@@ -3,18 +3,18 @@ mod graph;
 use graph::Graph;
 
 fn main() {
-    let mut graph: Graph = Graph::new();
-    graph.add_node("a");
-    graph.add_node("b");
-    graph.add_node("c");
-    graph.add_node("d");
-    graph.add_node("e");
-    graph.add_edge("a", "b");
-    graph.add_edge("b", "c");
-    graph.add_edge("c", "d");
-    graph.add_edge("d", "e");
-    graph.add_edge("e", "a");
-    let walk = graph.random_walk_simple("a", 20);
+    let mut graph: Graph<String> = Graph::new();
+    graph.add_node(&String::from("a"));
+    graph.add_node(&String::from("b"));
+    graph.add_node(&String::from("c"));
+    graph.add_node(&String::from("d"));
+    graph.add_node(&String::from("e"));
+    graph.add_edge(&String::from("a"), &String::from("b"));
+    graph.add_edge(&String::from("b"), &String::from("c"));
+    graph.add_edge(&String::from("c"), &String::from("d"));
+    graph.add_edge(&String::from("d"), &String::from("e"));
+    graph.add_edge(&String::from("e"), &String::from("a"));
+    let walk = graph.random_walk_simple(&String::from("a"), 20);
     println!("Graph: {:?}", graph);
     println!("Walk: {:?}", walk);
 }

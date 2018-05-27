@@ -1,39 +1,40 @@
 extern crate rand;
 use rand::Rng;
 
-use std::collections::LinkedList;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::iter::FromIterator;
+use std::collections::LinkedList;
 use std::fmt;
+use std::hash::Hash;
+use std::iter::FromIterator;
 
-pub struct Graph {
-    data: HashMap<String, HashSet<String>>
+pub struct Graph<T> {
+    data: HashMap<T, HashSet<T>>
 }
 
-impl Graph {
-    pub fn new() -> Graph {
+impl<T : Eq + Clone + Hash> Graph<T> {
+    pub fn new() -> Graph<T> {
         Graph { data: HashMap::new() }
     }
 
-    pub fn add_node(&mut self, node: &str) {
-        self.data.entry(String::from(node)).or_insert(HashSet::new());
+    pub fn add_node(&mut self, node: &T) {
+        self.data.entry(node.clone()).or_insert(HashSet::new());
     }
 
-    pub fn add_edge(&mut self, node_a: &str, node_b: &str) {
-        self.data.entry(String::from(node_a))
-            .and_modify(|e| {e.insert(String::from(node_b));})
-            .or_insert({let mut h = HashSet::new(); h.insert(String::from(node_b)); h});
-        self.data.entry(String::from(node_b))
-            .and_modify(|e| {e.insert(String::from(node_a));})
-            .or_insert({let mut h = HashSet::new(); h.insert(String::from(node_a)); h});
+    pub fn add_edge(&mut self, node_a: &T, node_b: &T) {
+        self.data.entry(node_a.clone())
+            .and_modify(|e| {e.insert(node_b.clone());})
+            .or_insert({let mut h = HashSet::new(); h.insert(node_b.clone()); h});
+        self.data.entry(node_b.clone())
+            .and_modify(|e| {e.insert(node_a.clone());})
+            .or_insert({let mut h = HashSet::new(); h.insert(node_a.clone()); h});
     }
 
-    pub fn successors(&self, node: &str) -> HashSet<String> {
-        self.data.get(&String::from(node)).unwrap_or(&HashSet::new()).clone()
+    pub fn successors(&self, node: &T) -> HashSet<T> {
+        self.data.get(node).unwrap_or(&HashSet::new()).clone()
     }
 
-    fn weighted_sample<T : Clone>(elems: LinkedList<T>, weight_fun: &Fn(&T) -> f32) -> Option<T> {
+    fn weighted_sample(elems: LinkedList<T>, weight_fun: &Fn(&T) -> f32) -> Option<T> {
         let total_weight: f32 = elems.iter().map(|e| weight_fun(e)).sum();
         let mut rng = rand::thread_rng();
         let mut goal: f32 = rng.gen_range(0.0, total_weight);
@@ -48,15 +49,15 @@ impl Graph {
         choice
     }
 
-    pub fn random_walk(&self, starting_node: &str, max_hops: u8, weight_fun: &Fn(&String) -> f32) -> LinkedList<String> {
-        let mut visited: LinkedList<String> = LinkedList::new();
-        let mut current_node = String::from(starting_node);
+    pub fn random_walk(&self, starting_node: &T, max_hops: u8, weight_fun: &Fn(&T) -> f32) -> LinkedList<T> {
+        let mut visited: LinkedList<T> = LinkedList::new();
+        let mut current_node = starting_node.clone();
         let mut hops = max_hops;
         while hops > 0 {
             hops = hops - 1;
             visited.push_front(current_node.clone());
             let succs = self.successors(&current_node);
-            let next = Graph::weighted_sample::<String>(LinkedList::from_iter(succs.iter().cloned()), weight_fun);
+            let next = Graph::weighted_sample(LinkedList::from_iter(succs.iter().cloned()), weight_fun);
             match next {
                 None => break,
                 Some(v) => current_node = v.clone()
@@ -65,12 +66,12 @@ impl Graph {
         visited
     }
 
-    pub fn random_walk_simple(&self, starting_node: &str, max_hops: u8) -> LinkedList<String> {
+    pub fn random_walk_simple(&self, starting_node: &T, max_hops: u8) -> LinkedList<T> {
         self.random_walk(starting_node, max_hops, &(|_| 1.0))
     }
 }
 
-impl fmt::Debug for Graph {
+impl<T : fmt::Debug + Eq + Hash> fmt::Debug for Graph<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Graph {:?}", self.data)
     }
