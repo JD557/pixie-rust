@@ -1,41 +1,42 @@
 use std::collections::HashMap;
 use std::fmt;
+use std::hash::Hash;
 
 mod graph;
 use self::graph::Graph;
 
 #[derive(PartialEq, Eq, Clone, Hash, Debug)]
-pub enum RecommenderNode {
+pub enum RecommenderNode<T> {
     Tag(String),
-    Object(String)
+    Object(T)
 }
 
-pub struct Recommender {
-    graph: Graph<RecommenderNode>
+pub struct Recommender<T> {
+    graph: Graph<RecommenderNode<T>>
 }
 
-impl Recommender {
-    pub fn new() -> Recommender {
+impl<T : Eq + Clone + Hash> Recommender<T> {
+    pub fn new() -> Recommender<T> {
         Recommender { graph: Graph::new() }
     }
 
-    pub fn add_object(&mut self, object: &str) {
-        self.graph.add_node(&RecommenderNode::Object(String::from(object)));
+    pub fn add_object(&mut self, object: &T) {
+        self.graph.add_node(&RecommenderNode::Object(object.clone()));
     }
 
     pub fn add_tag(&mut self, tag: &str) {
         self.graph.add_node(&RecommenderNode::Tag(String::from(tag)));
     }
 
-    pub fn tag_object(&mut self, object: &str, tag: &str) {
+    pub fn tag_object(&mut self, object: &T, tag: &str) {
         self.graph.add_edge(
-            &RecommenderNode::Object(String::from(object)),
+            &RecommenderNode::Object(object.clone()),
             &RecommenderNode::Tag(String::from(tag))
         );
     }
 
-    fn simple_recommendations_map(&self, from: &RecommenderNode, iterations: u8, depth: u8) -> HashMap<RecommenderNode, u32> {
-        let mut acc: HashMap<RecommenderNode, u32> = HashMap::new();
+    fn simple_recommendations_map(&self, from: &RecommenderNode<T>, iterations: u8, depth: u8) -> HashMap<RecommenderNode<T>, u32> {
+        let mut acc: HashMap<RecommenderNode<T>, u32> = HashMap::new();
         for _ in 0..iterations {
             let walk = self.graph.random_walk_simple(from, depth);
             for visited in walk {
@@ -46,11 +47,11 @@ impl Recommender {
         acc
     }
 
-    pub fn simple_recommendations(&self, from: &RecommenderNode, iterations: u8, depth: u8) -> Vec<RecommenderNode> {
+    pub fn simple_recommendations(&self, from: &RecommenderNode<T>, iterations: u8, depth: u8) -> Vec<RecommenderNode<T>> {
         let all_recommendations = self.simple_recommendations_map(
             from, iterations, depth);
         let mut top_recommendations = all_recommendations.iter()
-            .collect::<Vec<(&RecommenderNode, &u32)>>();
+            .collect::<Vec<(&RecommenderNode<T>, &u32)>>();
         top_recommendations.sort_by_key(|(_, &v)| v);
         top_recommendations.reverse();
         top_recommendations.iter()
@@ -60,7 +61,7 @@ impl Recommender {
     }
 }
 
-impl fmt::Debug for Recommender {
+impl<T: Eq + Hash + fmt::Debug> fmt::Debug for Recommender<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Recommender [{:?}]", self.graph)
     }

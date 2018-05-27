@@ -10,7 +10,7 @@ use recommender::RecommenderNode;
 extern crate csv;
 
 fn main() {
-    let mut recommender: Recommender = Recommender::new();
+    let mut recommender: Recommender<String> = Recommender::new();
 
     let file = File::open("anime.csv").unwrap();
     let buf_reader = BufReader::new(file);
@@ -20,12 +20,12 @@ fn main() {
         let entry = entry_res.unwrap();
         let name = entry.get(1).unwrap();
         let categories_str = entry.get(2).unwrap();
-        recommender.add_object(name);
+        recommender.add_object(&String::from(name));
         let categories = categories_str.split(",");
         for cat in categories {
             let trimmed = cat.trim();
             recommender.add_tag(trimmed);
-            recommender.tag_object(name, trimmed);
+            recommender.tag_object(&String::from(name), trimmed);
         }
     }
 
@@ -38,7 +38,7 @@ fn main() {
                 RecommenderNode::Object(_) => true
             }
         )
-        .take(10).cloned().collect::<Vec<RecommenderNode>>();
+        .take(10).cloned().collect::<Vec<RecommenderNode<String>>>();
 
     //println!("Recommender: {:?}", recommender);
     println!("Recommendations: {:?}", top_recommendations);
