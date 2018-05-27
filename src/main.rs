@@ -1,25 +1,38 @@
 extern crate rand;
 
+use std::fs::File;
+use std::io::BufReader;
+
 mod recommender;
 use recommender::Recommender;
 use recommender::RecommenderNode;
 
+extern crate csv;
+
 fn main() {
     let mut recommender: Recommender = Recommender::new();
 
-    recommender.add_object("Star Wars");
-    recommender.add_object("007");
-    recommender.add_tag("Action");
-    recommender.add_tag("Sci-fi");
+    let file = File::open("anime.csv").unwrap();
+    let buf_reader = BufReader::new(file);
+    let mut csv_reader = csv::Reader::from_reader(buf_reader);
 
-    recommender.tag_object("Star Wars", "Sci-fi");
-    recommender.tag_object("Star Wars", "Action");
-    recommender.tag_object("007", "Action");
+    for entry_res in csv_reader.records() {
+        let entry = entry_res.unwrap();
+        let name = entry.get(1).unwrap();
+        let categories_str = entry.get(2).unwrap();
+        recommender.add_object(name);
+        let categories = categories_str.split(",");
+        for cat in categories {
+            let trimmed = cat.trim();
+            recommender.add_tag(trimmed);
+            recommender.tag_object(name, trimmed);
+        }
+    }
 
     let recommendations = recommender.simple_recommendations(
-        &RecommenderNode::Object(String::from("Star Wars")),
+        &RecommenderNode::Object(String::from("Cowboy Bebop")),
         20);
 
-    println!("Recommender: {:?}", recommender);
+    //println!("Recommender: {:?}", recommender);
     println!("Recommendations: {:?}", recommendations);
 }
