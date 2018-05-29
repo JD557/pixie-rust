@@ -77,21 +77,23 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
 
         let total_scaling: f64 = query_scaling_factors.iter().sum();
 
-        let mut all_recommendations: HashMap<RecommenderNode<T>, u32> = HashMap::new();
+        let mut all_recommendations: HashMap<RecommenderNode<T>, f64> = HashMap::new();
         for (q, s) in queries.iter().zip(query_scaling_factors.iter()) {
             let max_steps: usize = ((max_total_steps as f64) * s / total_scaling) as usize;
             let query_recommendations = self.recommendations_map(q, depth, max_steps, weight_fun);
             for (key, value) in query_recommendations.iter() {
+                let value_sqrt = (value.clone() as f64).sqrt();
                 all_recommendations
                     .entry(key.clone())
-                    .and_modify(|x| *x += value)
-                    .or_insert(value.clone());
+                    .and_modify(|x| *x += value_sqrt)
+                    .or_insert(value_sqrt);
             }
         }
         let mut top_recommendations = all_recommendations
             .iter()
-            .collect::<Vec<(&RecommenderNode<T>, &u32)>>();
-        top_recommendations.sort_by_key(|(_, &v)| v);
+            .map(|(k, v)| (k, ((v * v) as u32)))
+            .collect::<Vec<(&RecommenderNode<T>, u32)>>();
+        top_recommendations.sort_by_key(|(_, v)| v.clone());
         top_recommendations.reverse();
         top_recommendations
             .iter()
