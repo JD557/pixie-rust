@@ -10,12 +10,14 @@ use std::iter::FromIterator;
 
 pub struct Graph<T> {
     data: HashMap<T, HashSet<T>>,
+    max_degree: usize,
 }
 
 impl<T: Eq + Clone + Hash> Graph<T> {
     pub fn new() -> Graph<T> {
         Graph {
             data: HashMap::new(),
+            max_degree: 0,
         }
     }
 
@@ -24,7 +26,7 @@ impl<T: Eq + Clone + Hash> Graph<T> {
     }
 
     pub fn add_edge(&mut self, node_a: &T, node_b: &T) {
-        self.data
+        let degree_a = self.data
             .entry(node_a.clone())
             .and_modify(|e| {
                 e.insert(node_b.clone());
@@ -33,8 +35,9 @@ impl<T: Eq + Clone + Hash> Graph<T> {
                 let mut h = HashSet::new();
                 h.insert(node_b.clone());
                 h
-            });
-        self.data
+            })
+            .len();
+        let degree_b = self.data
             .entry(node_b.clone())
             .and_modify(|e| {
                 e.insert(node_a.clone());
@@ -43,11 +46,28 @@ impl<T: Eq + Clone + Hash> Graph<T> {
                 let mut h = HashSet::new();
                 h.insert(node_a.clone());
                 h
-            });
+            })
+            .len();
+
+        if degree_a > self.max_degree {
+            self.max_degree = degree_a;
+        }
+
+        if degree_b > self.max_degree {
+            self.max_degree = degree_b;
+        }
     }
 
     pub fn successors(&self, node: &T) -> HashSet<T> {
         self.data.get(node).unwrap_or(&HashSet::new()).clone()
+    }
+
+    pub fn max_degree(&self) -> usize {
+        self.max_degree
+    }
+
+    pub fn degree(&self, node: &T) -> usize {
+        self.data.get(node).map(|x| x.len()).unwrap_or(0)
     }
 
     fn weighted_sample(elems: LinkedList<T>, weight_fun: &Fn(&T) -> f32) -> Option<T> {
@@ -96,6 +116,10 @@ impl<T: Eq + Clone + Hash> Graph<T> {
 
 impl<T: fmt::Debug + Eq + Hash> fmt::Debug for Graph<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Graph {:?}", self.data)
+        write!(
+            f,
+            "Graph {:?} / Max Degree = {:?}",
+            self.data, self.max_degree
+        )
     }
 }

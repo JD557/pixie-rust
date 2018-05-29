@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hash;
+use std::vec::Vec;
 
 mod graph;
 use self::graph::Graph;
@@ -42,16 +43,18 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
     fn recommendations_map(
         &self,
         from: &RecommenderNode<T>,
-        iterations: u8,
         depth: u8,
+        max_total_steps: usize,
         weight_fun: &Fn(&RecommenderNode<T>, &RecommenderNode<T>) -> f32,
     ) -> HashMap<RecommenderNode<T>, u32> {
         let mut acc: HashMap<RecommenderNode<T>, u32> = HashMap::new();
-        for _ in 0..iterations {
+        let mut steps_acc = 0;
+        while steps_acc < max_total_steps {
             let walk = self.graph.random_walk(from, depth, weight_fun);
             for visited in walk {
                 let count = acc.entry(visited).or_insert(0);
                 *count += 1;
+                steps_acc += 1;
             }
         }
         acc
@@ -59,12 +62,32 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
 
     pub fn recommendations(
         &self,
-        from: &RecommenderNode<T>,
-        iterations: u8,
+        queries: &Vec<&RecommenderNode<T>>,
         depth: u8,
+        max_total_steps: usize,
         weight_fun: &Fn(&RecommenderNode<T>, &RecommenderNode<T>) -> f32,
     ) -> Vec<RecommenderNode<T>> {
-        let all_recommendations = self.recommendations_map(from, iterations, depth, weight_fun);
+        let query_scaling_factors = queries
+            .iter()
+            .map(|q| {
+                let degree = self.graph.degree(q) as f64;
+                degree * (self.graph.max_degree() as f64 - degree.log2())
+            })
+            .collect::<Vec<f64>>();
+
+        let total_scaling: f64 = query_scaling_factors.iter().sum();
+
+        let mut all_recommendations: HashMap<RecommenderNode<T>, u32> = HashMap::new();
+        for (q, s) in queries.iter().zip(query_scaling_factors.iter()) {
+            let max_steps: usize = ((max_total_steps as f64) * s / total_scaling) as usize;
+            let query_recommendations = self.recommendations_map(q, depth, max_steps, weight_fun);
+            for (key, value) in query_recommendations.iter() {
+                all_recommendations
+                    .entry(key.clone())
+                    .and_modify(|x| *x += value)
+                    .or_insert(value.clone());
+            }
+        }
         let mut top_recommendations = all_recommendations
             .iter()
             .collect::<Vec<(&RecommenderNode<T>, &u32)>>();

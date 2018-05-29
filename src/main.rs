@@ -38,7 +38,11 @@ fn main() {
 
     let top_recommendations = recommender
         .recommendations(
-            &RecommenderNode::Object(String::from("Cowboy Bebop")),
+            &vec![
+                &RecommenderNode::Object(String::from("Cowboy Bebop")),
+                &RecommenderNode::Object(String::from("Serial Experiments Lain")),
+                &RecommenderNode::Object(String::from("Ghost in the Shell")),
+            ],
             25,
             25,
             &(|_, to| match to {
