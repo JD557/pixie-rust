@@ -43,8 +43,8 @@ fn main() {
                 &RecommenderNode::Object(String::from("Serial Experiments Lain")),
                 &RecommenderNode::Object(String::from("Ghost in the Shell")),
             ],
-            10,
-            1000,
+            15,
+            5000,
             &(|_, to| match to {
                 RecommenderNode::Tag(_) => 1.0,
                 RecommenderNode::Object(name) => ratings.get(name).unwrap_or(&0.0).clone(),
