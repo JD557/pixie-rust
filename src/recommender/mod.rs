@@ -99,6 +99,7 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
             .iter()
             .cloned()
             .map(|(k, _)| k.clone())
+            .filter(|r| queries.iter().find(|&&q| q == r).is_none())
             .collect()
     }
 }
