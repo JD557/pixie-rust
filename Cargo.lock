@@ -56,7 +56,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pixie-rs"
+name = "pixie-rust"
 version = "0.1.0"
 dependencies = [
  "csv 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",

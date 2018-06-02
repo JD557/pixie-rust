@@ -1,5 +1,5 @@
 [package]
-name = "pixie-rs"
+name = "pixie-rust"
 version = "0.1.0"
 authors = ["João Costa <jdpc557@gmail.com>"]
 

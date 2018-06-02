@@ -1,38 +1,54 @@
+//! # Recommender
+//!
+//! The `recommender` module is a collection of utilities to create
+//! a recommender and give recommendations.
+
 use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hash;
 use std::vec::Vec;
 
-mod graph;
+pub mod graph;
 use self::graph::Graph;
 
+/// Nodes to be used for recommendations.
+///
+/// A node can be either a `Tag` (e.g. a product category) or
+/// an `Object` (e.g. a product).
+///
 #[derive(PartialEq, Eq, Clone, Hash, Debug)]
 pub enum RecommenderNode<T> {
     Tag(String),
     Object(T),
 }
 
+/// A recommender that holds objects, tags and their relationship,
+/// and is able to return recommendations.
 pub struct Recommender<T> {
     graph: Graph<RecommenderNode<T>>,
 }
 
 impl<T: Eq + Clone + Hash> Recommender<T> {
+    /// Creates a new recommender.
     pub fn new() -> Recommender<T> {
         Recommender {
             graph: Graph::new(),
         }
     }
 
+    /// Adds an object to this recommender.
     pub fn add_object(&mut self, object: &T) {
         self.graph
             .add_node(&RecommenderNode::Object(object.clone()));
     }
 
+    /// Adds a tag to this recommender.
     pub fn add_tag(&mut self, tag: &str) {
         self.graph
             .add_node(&RecommenderNode::Tag(String::from(tag)));
     }
 
+    /// Assigns a tag to an object.
     pub fn tag_object(&mut self, object: &T, tag: &str) {
         self.graph.add_edge(
             &RecommenderNode::Object(object.clone()),
@@ -51,6 +67,9 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
         let mut steps_acc = 0;
         while steps_acc < max_total_steps {
             let walk = self.graph.random_walk(from, depth, weight_fun);
+            if walk.len() == 0 {
+                return acc;
+            }
             for visited in walk {
                 let count = acc.entry(visited).or_insert(0);
                 *count += 1;
@@ -60,6 +79,62 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
         acc
     }
 
+    /// Receives a set of queries (that can be either tags or objects) and
+    /// returns an ordered sequence of recommendations (with the first one
+    /// being the "best" one).
+    ///
+    /// The resulting recommendations can be either objects or tags, so ti
+    /// is advised to filter the result according to the expectations.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pixie_rust::recommender::Recommender;
+    /// use pixie_rust::recommender::RecommenderNode;
+    ///
+    /// let mut recommender: Recommender<String> = Recommender::new();
+    ///
+    /// let raid = String::from("The Raid");
+    /// let rocky = String::from("Rocky");
+    /// let python = String::from("Monty Python and The Holy Grail");
+    ///
+    /// let action = String::from("Action");
+    /// let comedy = String::from("Comedy");
+    /// let drama = String::from("Drama");
+    ///
+    /// recommender.add_object(&raid);
+    /// recommender.add_object(&rocky);
+    /// recommender.add_object(&python);
+    ///
+    /// recommender.add_tag(&action);
+    /// recommender.add_tag(&comedy);
+    /// recommender.add_tag(&drama);
+    ///
+    /// recommender.tag_object(&raid, &action);
+    /// recommender.tag_object(&rocky, &action);
+    /// recommender.tag_object(&rocky, &drama);
+    /// recommender.tag_object(&python, &comedy);
+    ///
+    /// let recommendations = recommender
+    ///     .recommendations(
+    ///         &vec![&RecommenderNode::Tag(action)],
+    ///         10,
+    ///         10,
+    ///         &(|_, _| 1.0)
+    ///     )
+    ///     .iter()
+    ///     .filter(|node| match node {
+    ///         RecommenderNode::Tag(_) => false,
+    ///         RecommenderNode::Object(_) => true
+    ///     })
+    ///     .cloned()
+    ///     .collect::<Vec<RecommenderNode<String>>>();
+    ///
+    /// assert!(
+    ///     recommendations[0] == RecommenderNode::Object(rocky) ||
+    ///     recommendations[0] == RecommenderNode::Object(raid)
+    ///     )
+    /// ```
     pub fn recommendations(
         &self,
         queries: &Vec<&RecommenderNode<T>>,
