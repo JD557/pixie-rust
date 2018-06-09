@@ -4,6 +4,7 @@
 //! a recommender and give recommendations.
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fmt;
 use std::hash::Hash;
 use std::vec::Vec;
@@ -83,7 +84,7 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
     /// returns an ordered sequence of recommendations (with the first one
     /// being the "best" one).
     ///
-    /// The resulting recommendations can be either objects or tags, so ti
+    /// The resulting recommendations can be either objects or tags, so it
     /// is advised to filter the result according to the expectations.
     ///
     /// # Examples
@@ -117,9 +118,10 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
     ///
     /// let recommendations = recommender
     ///     .recommendations(
-    ///         &vec![&RecommenderNode::Tag(action)],
+    ///         &vec![RecommenderNode::Tag(action)],
     ///         10,
     ///         10,
+    ///         &(|_, _| 1.0),
     ///         &(|_, _| 1.0)
     ///     )
     ///     .iter()
@@ -137,10 +139,11 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
     /// ```
     pub fn recommendations(
         &self,
-        queries: &Vec<&RecommenderNode<T>>,
+        queries: &Vec<RecommenderNode<T>>,
         depth: u8,
         max_total_steps: usize,
-        weight_fun: &Fn(&RecommenderNode<T>, &RecommenderNode<T>) -> f32,
+        object_to_tag_weight: &Fn(&T, &String) -> f32,
+        tag_to_object_weight: &Fn(&String, &T) -> f32,
     ) -> Vec<RecommenderNode<T>> {
         let query_scaling_factors = queries
             .iter()
@@ -155,7 +158,20 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
         let mut all_recommendations: HashMap<RecommenderNode<T>, f64> = HashMap::new();
         for (q, s) in queries.iter().zip(query_scaling_factors.iter()) {
             let max_steps: usize = ((max_total_steps as f64) * s / total_scaling) as usize;
-            let query_recommendations = self.recommendations_map(q, depth, max_steps, weight_fun);
+            let query_recommendations = self.recommendations_map(
+                q,
+                depth,
+                max_steps,
+                &(|from, to| match (from, to) {
+                    (RecommenderNode::Tag(tag), RecommenderNode::Object(obj)) => {
+                        tag_to_object_weight(tag, obj)
+                    }
+                    (RecommenderNode::Object(obj), RecommenderNode::Tag(tag)) => {
+                        object_to_tag_weight(obj, tag)
+                    }
+                    _ => 0.0,
+                }),
+            );
             for (key, value) in query_recommendations.iter() {
                 let value_sqrt = (value.clone() as f64).sqrt();
                 all_recommendations
@@ -164,17 +180,103 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
                     .or_insert(value_sqrt);
             }
         }
+
+        let mut queries_set: HashSet<&RecommenderNode<T>> = HashSet::new();
+        for q in queries {
+            queries_set.insert(q);
+        }
+
         let mut top_recommendations = all_recommendations
             .iter()
             .map(|(k, v)| (k, ((v * v) as u32)))
             .collect::<Vec<(&RecommenderNode<T>, u32)>>();
-        top_recommendations.sort_by_key(|(_, v)| v.clone());
+        top_recommendations.sort_by_key(|(_, v)| *v);
         top_recommendations.reverse();
         top_recommendations
             .iter()
+            .map(|(k, _)| k)
+            .filter(|r| !queries_set.contains(*r))
+            .map(|r| r.clone())
             .cloned()
-            .map(|(k, _)| k.clone())
-            .filter(|r| queries.iter().find(|&&q| q == r).is_none())
+            .collect()
+    }
+
+    /// Receives a set of queries (that can only objects) and
+    /// returns an ordered sequence of recommendations (with the first one
+    /// being the "best" one).
+    ///
+    /// This is a simplified version of the `recommendations` operation
+    /// that only returns objects.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pixie_rust::recommender::Recommender;
+    /// use pixie_rust::recommender::RecommenderNode;
+    ///
+    /// let mut recommender: Recommender<String> = Recommender::new();
+    ///
+    /// let raid = String::from("The Raid");
+    /// let rocky = String::from("Rocky");
+    /// let python = String::from("Monty Python and The Holy Grail");
+    ///
+    /// let action = String::from("Action");
+    /// let comedy = String::from("Comedy");
+    /// let drama = String::from("Drama");
+    ///
+    /// recommender.add_object(&raid);
+    /// recommender.add_object(&rocky);
+    /// recommender.add_object(&python);
+    ///
+    /// recommender.add_tag(&action);
+    /// recommender.add_tag(&comedy);
+    /// recommender.add_tag(&drama);
+    ///
+    /// recommender.tag_object(&raid, &action);
+    /// recommender.tag_object(&rocky, &action);
+    /// recommender.tag_object(&rocky, &drama);
+    /// recommender.tag_object(&python, &comedy);
+    ///
+    /// let recommendations = recommender
+    ///     .object_recommendations(
+    ///         &vec![raid.clone()],
+    ///         10,
+    ///         10,
+    ///         &(|_, _| 1.0),
+    ///         &(|_, _| 1.0)
+    ///     )
+    ///     .iter()
+    ///     .cloned()
+    ///     .collect::<Vec<String>>();
+    ///
+    /// assert!(
+    ///     recommendations[0] == rocky || recommendations[0] == raid
+    ///     )
+    /// ```
+    pub fn object_recommendations(
+        &self,
+        queries: &Vec<T>,
+        depth: u8,
+        max_total_steps: usize,
+        object_to_tag_weight: &Fn(&T, &String) -> f32,
+        tag_to_object_weight: &Fn(&String, &T) -> f32,
+    ) -> Vec<T> {
+        let node_queries: Vec<RecommenderNode<T>> = queries
+            .iter()
+            .map(|x| RecommenderNode::Object(x.clone()))
+            .collect();
+        self.recommendations(
+            &node_queries,
+            depth,
+            max_total_steps,
+            object_to_tag_weight,
+            tag_to_object_weight,
+        ).iter()
+            .flat_map(|node| match node {
+                RecommenderNode::Tag(_) => None,
+                RecommenderNode::Object(obj) => Some(obj),
+            })
+            .cloned()
             .collect()
     }
 }

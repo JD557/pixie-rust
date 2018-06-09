@@ -6,7 +6,6 @@ use std::io::BufReader;
 
 mod recommender;
 use recommender::Recommender;
-use recommender::RecommenderNode;
 
 extern crate csv;
 
@@ -37,27 +36,23 @@ fn main() {
     println!("Data Loaded!");
 
     let top_recommendations = recommender
-        .recommendations(
+        .object_recommendations(
             &vec![
-                &RecommenderNode::Object(String::from("Cowboy Bebop")),
-                &RecommenderNode::Object(String::from("Serial Experiments Lain")),
-                &RecommenderNode::Object(String::from("Ghost in the Shell")),
+                String::from("Cowboy Bebop"),
+                String::from("Serial Experiments Lain"),
+                String::from("Ghost in the Shell"),
             ],
             15,
             5000,
+            &(|_, _| 1.0),
             &(|_, to| match to {
-                RecommenderNode::Tag(_) => 1.0,
-                RecommenderNode::Object(name) => ratings.get(name).unwrap_or(&0.0).clone(),
+                name => ratings.get(name).unwrap_or(&0.0).clone(),
             }),
         )
         .iter()
-        .filter(|node| match node {
-            RecommenderNode::Tag(_) => false,
-            RecommenderNode::Object(_) => true,
-        })
         .take(10)
         .cloned()
-        .collect::<Vec<RecommenderNode<String>>>();
+        .collect::<Vec<String>>();
 
     println!("Recommendations: {:?}", top_recommendations);
 }
