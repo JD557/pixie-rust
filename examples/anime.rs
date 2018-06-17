@@ -1,11 +1,10 @@
-extern crate rand;
+extern crate pixie_rust;
 
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 
-mod recommender;
-use recommender::Recommender;
+use pixie_rust::recommender::Recommender;
 
 extern crate csv;
 
@@ -13,7 +12,7 @@ fn main() {
     let mut recommender: Recommender<String> = Recommender::new();
 
     println!("Loading Data...");
-    let file = File::open("anime.csv").unwrap();
+    let file = File::open("examples/anime.csv").unwrap();
     let buf_reader = BufReader::new(file);
     let mut csv_reader = csv::Reader::from_reader(buf_reader);
 
