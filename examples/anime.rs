@@ -12,6 +12,7 @@ fn main() {
     let mut recommender: Recommender<String> = Recommender::new();
 
     println!("Loading Data...");
+    // Anime dataset from https://www.kaggle.com/CooperUnion/anime-recommendations-database
     let file = File::open("examples/anime.csv").unwrap();
     let buf_reader = BufReader::new(file);
     let mut csv_reader = csv::Reader::from_reader(buf_reader);
