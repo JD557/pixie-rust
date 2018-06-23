@@ -239,8 +239,8 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
     /// let recommendations = recommender
     ///     .object_recommendations(
     ///         &vec![raid.clone()],
-    ///         10,
-    ///         10,
+    ///         50,
+    ///         50,
     ///         &(|_, _| 1.0),
     ///         &(|_, _| 1.0)
     ///     )
@@ -249,9 +249,7 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
     ///     .collect::<Vec<String>>();
     ///
     /// assert!(recommendations.len() > 0);
-    /// assert!(
-    ///     recommendations[0] == rocky || recommendations[0] == raid
-    ///     )
+    /// assert!(recommendations[0] == rocky)
     /// ```
     pub fn object_recommendations(
         &self,
@@ -284,5 +282,80 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
 impl<T: Eq + Hash + fmt::Debug> fmt::Debug for Recommender<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Recommender [{:?}]", self.graph)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn dead_end_recommendations_map() {
+        let mut recommender: Recommender<String> = Recommender::new();
+    
+        let obj_0 = String::from("0.0");
+        let tag_1 = String::from("1.0");
+        let obj_2 = String::from("2.0");
+
+        recommender.add_object(&obj_0);
+        recommender.add_tag(&tag_1);
+        recommender.add_object(&obj_2);
+        
+        recommender.tag_object(&obj_0, &tag_1);
+        recommender.tag_object(&obj_2, &tag_1);
+        
+        let recommendations = recommender
+            .recommendations_map(
+                &RecommenderNode::Object(obj_0.clone()),
+                3,
+                3,
+                &(|from, to| match (from, to) {
+                    (RecommenderNode::Tag(tag), RecommenderNode::Object(obj)) => {
+                        obj.parse::<f32>().unwrap() - tag.parse::<f32>().unwrap()
+                    }
+                    (RecommenderNode::Object(obj), RecommenderNode::Tag(tag)) => {
+                        tag.parse::<f32>().unwrap() - obj.parse::<f32>().unwrap()
+                    }
+                    _ => 0.0,
+                }),
+            );
+
+        assert_eq!(
+            recommendations.get(&RecommenderNode::Tag(tag_1)).unwrap(),
+            &1);
+        assert_eq!(
+            recommendations.get(&RecommenderNode::Object(obj_2)).unwrap(),
+            &1);
+    }
+    #[test]
+    fn basic_recommendations() {
+        let mut recommender: Recommender<String> = Recommender::new();
+    
+        let obj_0 = String::from("0.0");
+        let tag_1 = String::from("1.0");
+        let obj_2 = String::from("2.0");
+
+        recommender.add_object(&obj_0);
+        recommender.add_tag(&tag_1);
+        recommender.add_object(&obj_2);
+        
+        recommender.tag_object(&obj_0, &tag_1);
+        recommender.tag_object(&obj_2, &tag_1);
+        
+        let recommendations = recommender
+            .recommendations(
+                &vec![RecommenderNode::Object(obj_0.clone())],
+                10,
+                10,
+                &(|from, to| to.parse::<f32>().unwrap() - from.parse::<f32>().unwrap()),
+                &(|from, to| to.parse::<f32>().unwrap() - from.parse::<f32>().unwrap())
+            )
+            .iter()
+            .cloned()
+            .collect::<HashSet<RecommenderNode<String>>>();
+
+        assert!(!recommendations.contains(&RecommenderNode::Object(obj_0)));
+        assert!(recommendations.contains(&RecommenderNode::Tag(tag_1)));
+        assert!(recommendations.contains(&RecommenderNode::Object(obj_2)));
     }
 }

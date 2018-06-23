@@ -150,16 +150,22 @@ impl<T: Eq + Clone + Hash> Graph<T> {
         elems: LinkedList<T>,
         weight_fun: &Fn(&T) -> f32,
     ) -> Option<T> {
-        if elems.len() == 0 {
+        let safe_weight_fun: &Fn(&T) -> f32 = &(|x| { 
+            let unsafe_weight = weight_fun(x);
+            let clamped_weight = unsafe_weight.max(0.0);
+            if clamped_weight.is_infinite() {0.0}
+            else {clamped_weight}
+        });
+        let total_weight: f32 = elems.iter().map(|e| safe_weight_fun(e)).sum();
+        if total_weight == 0.0  {
             None
         } else {
-            let total_weight: f32 = elems.iter().map(|e| weight_fun(e)).sum();
             let mut goal: f32 = rng.gen_range(0.0, total_weight);
             let mut iterator = elems.iter().cloned();
             let mut choice = iterator.next();
             while choice.is_some() {
                 let value = choice.clone().unwrap();
-                goal = goal - weight_fun(&value);
+                goal = goal - safe_weight_fun(&value);
                 if goal <= 0.0 {
                     break;
                 } else {
@@ -284,7 +290,13 @@ mod test {
             Graph::weighted_sample(
                 &mut rng,
                 list.clone(),
+                &(|_| -1.0));
+        assert_eq!(res3, None);
+        let res4 = 
+            Graph::weighted_sample(
+                &mut rng,
+                list.clone(),
                 &(|_| 1.0));
-        assert!(res3.unwrap() == 0 || res3.unwrap() == 1);
+        assert!(res4.unwrap() == 0 || res4.unwrap() == 1);
     }
 }
