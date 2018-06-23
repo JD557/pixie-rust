@@ -175,6 +175,28 @@ impl<T: Eq + Clone + Hash> Graph<T> {
     /// `(from, to) = weight`.
     ///
     /// It returns the list of visited nodes in reverse order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pixie_rust::recommender::graph::Graph;
+    ///
+    /// let mut graph: Graph<u32> = Graph::new();
+    ///
+    /// graph.add_node(&1);
+    /// graph.add_node(&2);
+    /// graph.add_node(&3);
+    /// graph.add_edge(&1, &2);
+    /// graph.add_edge(&1, &3);
+    /// let visited = graph.random_walk(&1, 200, &(|_, x| x.clone() as f32));
+    /// assert_eq!(visited.len(), 200);
+    ///
+    /// // The node 3 should be visited more often due to the weight function
+    /// assert!(
+    ///     visited.iter().filter(|&&x| x == 2).count() <
+    ///     visited.iter().filter(|&&x| x == 3).count()
+    /// );
+    /// ```
     pub fn random_walk(
         &self,
         starting_node: &T,

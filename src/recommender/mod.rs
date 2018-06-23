@@ -212,7 +212,6 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
     ///
     /// ```
     /// use pixie_rust::recommender::Recommender;
-    /// use pixie_rust::recommender::RecommenderNode;
     ///
     /// let mut recommender: Recommender<String> = Recommender::new();
     ///
@@ -249,6 +248,7 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
     ///     .cloned()
     ///     .collect::<Vec<String>>();
     ///
+    /// assert!(recommendations.len() > 0);
     /// assert!(
     ///     recommendations[0] == rocky || recommendations[0] == raid
     ///     )
