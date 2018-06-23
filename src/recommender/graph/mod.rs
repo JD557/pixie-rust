@@ -236,3 +236,55 @@ impl<T: fmt::Debug + Eq + Hash> fmt::Debug for Graph<T> {
         )
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn unknown_node_random_walk() {
+        let graph: Graph<u32> = Graph::new();
+        let visited = graph.random_walk(&1, 200, &(|_, x| x.clone() as f32));
+        assert_eq!(visited.len(), 0,
+            "Visited {} node(s) on an empty graph",
+            visited.len()
+        );
+    }
+
+    #[test]
+    fn lone_node_random_walk() {
+        let mut graph: Graph<u32> = Graph::new();
+        graph.add_node(&1);
+        let visited = graph.random_walk(&1, 200, &(|_, x| x.clone() as f32));
+        assert_eq!(visited.len(), 1,
+            "Visited {} nodes on a graph with a single node",
+            visited.len()
+        );
+    }
+
+    #[test]
+    fn sample_with_weights() {
+        let mut rng = rand::thread_rng();
+        let mut list: LinkedList<u8> = LinkedList::new();
+        list.push_front(0);
+        list.push_front(1);
+        let res1 = 
+            Graph::weighted_sample(
+                &mut rng,
+                list.clone(),
+                &(|x| x.clone() as f32));
+        assert_eq!(res1.unwrap(), 1);
+        let res2 = 
+            Graph::weighted_sample(
+                &mut rng,
+                list.clone(),
+                &(|x| 1.0 + (-1.0 * (x.clone() as f32))));
+        assert_eq!(res2.unwrap(), 0);
+        let res3 = 
+            Graph::weighted_sample(
+                &mut rng,
+                list.clone(),
+                &(|_| 1.0));
+        assert!(res3.unwrap() == 0 || res3.unwrap() == 1);
+    }
+}
