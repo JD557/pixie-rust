@@ -1,6 +1,6 @@
 # Pixie Rust
 
-A Recommender based on [Pinterest's Pixie Recommender][pixie].
+A Rust implementation of a recommender system based on the [Pinterest's Pixie recommender][pixie].
 
 **Disclaimer:** This is a toy project and should probably not be used in production.
 
