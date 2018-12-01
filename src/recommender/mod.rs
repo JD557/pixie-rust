@@ -150,8 +150,7 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
             .map(|q| {
                 let degree = self.graph.degree(q) as f64;
                 degree * (self.graph.max_degree() as f64 - degree.log2())
-            })
-            .collect::<Vec<f64>>();
+            }).collect::<Vec<f64>>();
 
         let total_scaling: f64 = query_scaling_factors.iter().sum();
 
@@ -188,6 +187,7 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
 
         let mut top_recommendations = all_recommendations
             .iter()
+            .filter(|(k, _)| !queries_set.contains(*k))
             .map(|(k, v)| (k, ((v * v) as u32)))
             .collect::<Vec<(&RecommenderNode<T>, u32)>>();
         top_recommendations.sort_by_key(|(_, v)| *v);
@@ -195,8 +195,7 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
         top_recommendations
             .iter()
             .map(|(k, _)| k)
-            .filter(|r| !queries_set.contains(*r))
-            .map(|r| r.clone())
+            .cloned()
             .cloned()
             .collect()
     }
@@ -270,12 +269,10 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
             object_to_tag_weight,
             tag_to_object_weight,
         ).iter()
-            .flat_map(|node| match node {
-                RecommenderNode::Tag(_) => None,
-                RecommenderNode::Object(obj) => Some(obj),
-            })
-            .cloned()
-            .collect()
+        .flat_map(|node| match node {
+            RecommenderNode::Tag(_) => None,
+            RecommenderNode::Object(obj) => Some(obj.clone()),
+        }).collect()
     }
 }
 
@@ -292,7 +289,7 @@ mod test {
     #[test]
     fn dead_end_recommendations_map() {
         let mut recommender: Recommender<String> = Recommender::new();
-    
+
         let obj_0 = String::from("0.0");
         let tag_1 = String::from("1.0");
         let obj_2 = String::from("2.0");
@@ -300,37 +297,40 @@ mod test {
         recommender.add_object(&obj_0);
         recommender.add_tag(&tag_1);
         recommender.add_object(&obj_2);
-        
+
         recommender.tag_object(&obj_0, &tag_1);
         recommender.tag_object(&obj_2, &tag_1);
-        
-        let recommendations = recommender
-            .recommendations_map(
-                &RecommenderNode::Object(obj_0.clone()),
-                3,
-                3,
-                &(|from, to| match (from, to) {
-                    (RecommenderNode::Tag(tag), RecommenderNode::Object(obj)) => {
-                        obj.parse::<f32>().unwrap() - tag.parse::<f32>().unwrap()
-                    }
-                    (RecommenderNode::Object(obj), RecommenderNode::Tag(tag)) => {
-                        tag.parse::<f32>().unwrap() - obj.parse::<f32>().unwrap()
-                    }
-                    _ => 0.0,
-                }),
-            );
+
+        let recommendations = recommender.recommendations_map(
+            &RecommenderNode::Object(obj_0.clone()),
+            3,
+            3,
+            &(|from, to| match (from, to) {
+                (RecommenderNode::Tag(tag), RecommenderNode::Object(obj)) => {
+                    obj.parse::<f32>().unwrap() - tag.parse::<f32>().unwrap()
+                }
+                (RecommenderNode::Object(obj), RecommenderNode::Tag(tag)) => {
+                    tag.parse::<f32>().unwrap() - obj.parse::<f32>().unwrap()
+                }
+                _ => 0.0,
+            }),
+        );
 
         assert_eq!(
             recommendations.get(&RecommenderNode::Tag(tag_1)).unwrap(),
-            &1);
+            &1
+        );
         assert_eq!(
-            recommendations.get(&RecommenderNode::Object(obj_2)).unwrap(),
-            &1);
+            recommendations
+                .get(&RecommenderNode::Object(obj_2))
+                .unwrap(),
+            &1
+        );
     }
     #[test]
     fn basic_recommendations() {
         let mut recommender: Recommender<String> = Recommender::new();
-    
+
         let obj_0 = String::from("0.0");
         let tag_1 = String::from("1.0");
         let obj_2 = String::from("2.0");
@@ -338,19 +338,18 @@ mod test {
         recommender.add_object(&obj_0);
         recommender.add_tag(&tag_1);
         recommender.add_object(&obj_2);
-        
+
         recommender.tag_object(&obj_0, &tag_1);
         recommender.tag_object(&obj_2, &tag_1);
-        
+
         let recommendations = recommender
             .recommendations(
                 &vec![RecommenderNode::Object(obj_0.clone())],
                 10,
                 10,
                 &(|from, to| to.parse::<f32>().unwrap() - from.parse::<f32>().unwrap()),
-                &(|from, to| to.parse::<f32>().unwrap() - from.parse::<f32>().unwrap())
-            )
-            .iter()
+                &(|from, to| to.parse::<f32>().unwrap() - from.parse::<f32>().unwrap()),
+            ).iter()
             .cloned()
             .collect::<HashSet<RecommenderNode<String>>>();
 
