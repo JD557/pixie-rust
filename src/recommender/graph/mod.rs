@@ -7,7 +7,7 @@
 //! directly.
 
 extern crate rand;
-use rand::rngs::ThreadRng;
+use rand::rngs::OsRng;
 use rand::Rng;
 
 use std::collections::HashMap;
@@ -144,7 +144,7 @@ impl<T: Eq + Clone + Hash> Graph<T> {
     }
 
     fn weighted_sample(
-        rng: &mut ThreadRng,
+        rng: &mut impl Rng,
         elems: LinkedList<&T>,
         weight_fun: &Fn(&T) -> f32,
     ) -> Option<T> {
@@ -210,7 +210,7 @@ impl<T: Eq + Clone + Hash> Graph<T> {
         max_hops: u8,
         weight_fun: &Fn(&T, &T) -> f32,
     ) -> LinkedList<T> {
-        let mut rng = rand::thread_rng();
+        let mut rng = OsRng::new().unwrap();
         let mut visited: LinkedList<T> = LinkedList::new();
         if self.data.contains_key(starting_node) {
             let mut current_node = starting_node.clone();

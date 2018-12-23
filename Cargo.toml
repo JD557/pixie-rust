@@ -8,7 +8,7 @@ description = "A recommender system based on Pinterest's Pixie recommender"
 edition = "2018"
 
 [dependencies]
-rand = "0.5.0"
+rand = "0.6"
 
 [dev-dependencies]
 csv = "1"
