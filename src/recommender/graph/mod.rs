@@ -210,7 +210,7 @@ impl<T: Eq + Clone + Hash> Graph<T> {
         max_hops: u8,
         weight_fun: &Fn(&T, &T) -> f32,
     ) -> LinkedList<T> {
-        let mut rng = OsRng::new().unwrap();
+        let mut rng = OsRng::new().expect("Failed to create the RNG");
         let mut visited: LinkedList<T> = LinkedList::new();
         if self.data.contains_key(starting_node) {
             let mut current_node = starting_node.clone();
