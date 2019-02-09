@@ -62,12 +62,12 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
         from: &RecommenderNode<T>,
         depth: u8,
         max_total_steps: usize,
-        weight_fun: &Fn(&RecommenderNode<T>, &RecommenderNode<T>) -> f32,
+        weight_fun: impl Fn(&RecommenderNode<T>, &RecommenderNode<T>) -> f32,
     ) -> HashMap<RecommenderNode<T>, u32> {
         let mut acc: HashMap<RecommenderNode<T>, u32> = HashMap::new();
         let mut steps_acc = 0;
         while steps_acc < max_total_steps {
-            let walk = self.graph.random_walk(from, depth, weight_fun);
+            let walk = self.graph.random_walk(from, depth, &weight_fun);
             if walk.len() == 0 {
                 return acc;
             }
@@ -121,8 +121,8 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
     ///         &vec![RecommenderNode::Tag(action)],
     ///         10,
     ///         10,
-    ///         &(|_, _| 1.0),
-    ///         &(|_, _| 1.0)
+    ///         |_, _| 1.0,
+    ///         |_, _| 1.0
     ///     )
     ///     .iter()
     ///     .filter(|node| match node {
@@ -142,26 +142,24 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
         queries: &Vec<RecommenderNode<T>>,
         depth: u8,
         max_total_steps: usize,
-        object_to_tag_weight: &Fn(&T, &String) -> f32,
-        tag_to_object_weight: &Fn(&String, &T) -> f32,
+        object_to_tag_weight: impl Fn(&T, &String) -> f32,
+        tag_to_object_weight: impl Fn(&String, &T) -> f32,
     ) -> Vec<RecommenderNode<T>> {
         let query_scaling_factors = queries
             .iter()
             .map(|q| {
                 let degree = self.graph.degree(q) as f64;
                 degree * (self.graph.max_degree() as f64 - degree.log2())
-            }).collect::<Vec<f64>>();
+            })
+            .collect::<Vec<f64>>();
 
         let total_scaling: f64 = query_scaling_factors.iter().sum();
 
         let mut all_recommendations: HashMap<RecommenderNode<T>, f64> = HashMap::new();
         for (q, s) in queries.iter().zip(query_scaling_factors.iter()) {
             let max_steps: usize = ((max_total_steps as f64) * s / total_scaling) as usize;
-            let query_recommendations = self.recommendations_map(
-                q,
-                depth,
-                max_steps,
-                &(|from, to| match (from, to) {
+            let query_recommendations =
+                self.recommendations_map(q, depth, max_steps, |from, to| match (from, to) {
                     (RecommenderNode::Tag(tag), RecommenderNode::Object(obj)) => {
                         tag_to_object_weight(tag, obj)
                     }
@@ -169,8 +167,7 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
                         object_to_tag_weight(obj, tag)
                     }
                     _ => 0.0,
-                }),
-            );
+                });
             for (key, value) in query_recommendations.iter() {
                 let value_sqrt = (value.clone() as f64).sqrt();
                 all_recommendations
@@ -240,8 +237,8 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
     ///         &vec![raid.clone()],
     ///         50,
     ///         50,
-    ///         &(|_, _| 1.0),
-    ///         &(|_, _| 1.0)
+    ///         |_, _| 1.0,
+    ///         |_, _| 1.0
     ///     )
     ///     .iter()
     ///     .cloned()
@@ -255,8 +252,8 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
         queries: &Vec<T>,
         depth: u8,
         max_total_steps: usize,
-        object_to_tag_weight: &Fn(&T, &String) -> f32,
-        tag_to_object_weight: &Fn(&String, &T) -> f32,
+        object_to_tag_weight: impl Fn(&T, &String) -> f32,
+        tag_to_object_weight: impl Fn(&String, &T) -> f32,
     ) -> Vec<T> {
         let node_queries: Vec<RecommenderNode<T>> = queries
             .iter()
@@ -268,11 +265,13 @@ impl<T: Eq + Clone + Hash> Recommender<T> {
             max_total_steps,
             object_to_tag_weight,
             tag_to_object_weight,
-        ).iter()
+        )
+        .iter()
         .flat_map(|node| match node {
             RecommenderNode::Tag(_) => None,
             RecommenderNode::Object(obj) => Some(obj.clone()),
-        }).collect()
+        })
+        .collect()
     }
 }
 
@@ -305,7 +304,7 @@ mod test {
             &RecommenderNode::Object(obj_0.clone()),
             3,
             3,
-            &(|from, to| match (from, to) {
+            |from, to| match (from, to) {
                 (RecommenderNode::Tag(tag), RecommenderNode::Object(obj)) => {
                     obj.parse::<f32>().unwrap() - tag.parse::<f32>().unwrap()
                 }
@@ -313,7 +312,7 @@ mod test {
                     tag.parse::<f32>().unwrap() - obj.parse::<f32>().unwrap()
                 }
                 _ => 0.0,
-            }),
+            },
         );
 
         assert_eq!(
@@ -347,9 +346,10 @@ mod test {
                 &vec![RecommenderNode::Object(obj_0.clone())],
                 10,
                 10,
-                &(|from, to| to.parse::<f32>().unwrap() - from.parse::<f32>().unwrap()),
-                &(|from, to| to.parse::<f32>().unwrap() - from.parse::<f32>().unwrap()),
-            ).iter()
+                |from, to| to.parse::<f32>().unwrap() - from.parse::<f32>().unwrap(),
+                |from, to| to.parse::<f32>().unwrap() - from.parse::<f32>().unwrap(),
+            )
+            .iter()
             .cloned()
             .collect::<HashSet<RecommenderNode<String>>>();
 

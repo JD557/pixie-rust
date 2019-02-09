@@ -44,21 +44,25 @@ impl<T: Eq + Clone + Hash> Graph<T> {
             .entry(node_a.clone())
             .and_modify(|e| {
                 e.insert(node_b.clone());
-            }).or_insert({
+            })
+            .or_insert({
                 let mut h = HashSet::new();
                 h.insert(node_b.clone());
                 h
-            }).len();
+            })
+            .len();
         let degree_b = self
             .data
             .entry(node_b.clone())
             .and_modify(|e| {
                 e.insert(node_a.clone());
-            }).or_insert({
+            })
+            .or_insert({
                 let mut h = HashSet::new();
                 h.insert(node_a.clone());
                 h
-            }).len();
+            })
+            .len();
 
         if degree_a > self.max_degree {
             self.max_degree = degree_a;
@@ -146,9 +150,9 @@ impl<T: Eq + Clone + Hash> Graph<T> {
     fn weighted_sample(
         rng: &mut impl Rng,
         elems: LinkedList<&T>,
-        weight_fun: &Fn(&T) -> f32,
+        weight_fun: impl Fn(&T) -> f32,
     ) -> Option<T> {
-        let safe_weight_fun: &Fn(&T) -> f32 = &(|x| {
+        let safe_weight_fun = |x| {
             let unsafe_weight = weight_fun(x);
             let clamped_weight = unsafe_weight.max(0.0);
             if clamped_weight.is_infinite() {
@@ -156,7 +160,7 @@ impl<T: Eq + Clone + Hash> Graph<T> {
             } else {
                 clamped_weight
             }
-        });
+        };
         let total_weight: f32 = elems.iter().map(|e| safe_weight_fun(e)).sum();
         if total_weight == 0.0 {
             None
@@ -195,7 +199,7 @@ impl<T: Eq + Clone + Hash> Graph<T> {
     /// graph.add_node(&3);
     /// graph.add_edge(&1, &2);
     /// graph.add_edge(&1, &3);
-    /// let visited = graph.random_walk(&1, 200, &(|_, x| x.clone() as f32));
+    /// let visited = graph.random_walk(&1, 200, |_, x| x.clone() as f32);
     /// assert_eq!(visited.len(), 200);
     ///
     /// // The node 3 should be visited more often due to the weight function
@@ -208,7 +212,7 @@ impl<T: Eq + Clone + Hash> Graph<T> {
         &self,
         starting_node: &T,
         max_hops: u8,
-        weight_fun: &Fn(&T, &T) -> f32,
+        weight_fun: impl Fn(&T, &T) -> f32,
     ) -> LinkedList<T> {
         let mut rng = OsRng::new().expect("Failed to create the RNG");
         let mut visited: LinkedList<T> = LinkedList::new();
@@ -222,7 +226,7 @@ impl<T: Eq + Clone + Hash> Graph<T> {
                 let next = Graph::weighted_sample(
                     &mut rng,
                     LinkedList::from_iter(succs.iter()),
-                    &(|next_node| weight_fun(&current_node, next_node)),
+                    |next_node| weight_fun(&current_node, next_node),
                 );
                 match next {
                     None => break,
@@ -251,7 +255,7 @@ mod test {
     #[test]
     fn unknown_node_random_walk() {
         let graph: Graph<u32> = Graph::new();
-        let visited = graph.random_walk(&1, 200, &(|_, x| x.clone() as f32));
+        let visited = graph.random_walk(&1, 200, |_, x| x.clone() as f32);
         assert_eq!(
             visited.len(),
             0,
@@ -264,7 +268,7 @@ mod test {
     fn lone_node_random_walk() {
         let mut graph: Graph<u32> = Graph::new();
         graph.add_node(&1);
-        let visited = graph.random_walk(&1, 200, &(|_, x| x.clone() as f32));
+        let visited = graph.random_walk(&1, 200, |_, x| x.clone() as f32);
         assert_eq!(
             visited.len(),
             1,
@@ -279,17 +283,15 @@ mod test {
         let mut list: LinkedList<&u8> = LinkedList::new();
         list.push_front(&0);
         list.push_front(&1);
-        let res1 = Graph::weighted_sample(&mut rng, list.clone(), &(|x| x.clone() as f32));
+        let res1 = Graph::weighted_sample(&mut rng, list.clone(), |x| x.clone() as f32);
         assert_eq!(res1.unwrap(), 1);
-        let res2 = Graph::weighted_sample(
-            &mut rng,
-            list.clone(),
-            &(|x| 1.0 + (-1.0 * (x.clone() as f32))),
-        );
+        let res2 = Graph::weighted_sample(&mut rng, list.clone(), |x| {
+            1.0 + (-1.0 * (x.clone() as f32))
+        });
         assert_eq!(res2.unwrap(), 0);
-        let res3 = Graph::weighted_sample(&mut rng, list.clone(), &(|_| -1.0));
+        let res3 = Graph::weighted_sample(&mut rng, list.clone(), |_| -1.0);
         assert_eq!(res3, None);
-        let res4 = Graph::weighted_sample(&mut rng, list.clone(), &(|_| 1.0));
+        let res4 = Graph::weighted_sample(&mut rng, list.clone(), |_| 1.0);
         assert!(res4.unwrap() == 0 || res4.unwrap() == 1);
     }
 }

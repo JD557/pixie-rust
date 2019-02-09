@@ -44,10 +44,10 @@ fn main() {
             ],
             15,
             5000,
-            &(|_, _| 1.0),
-            &(|_, to| match to {
+            |_, _| 1.0,
+            |_, to| match to {
                 name => ratings.get(name).unwrap_or(&0.0).clone(),
-            }),
+            },
         )
         .iter()
         .take(10)
